@@ -135,6 +135,20 @@ mod insert {
         table.insert(4, "o, W");
         validate_table(&table, "Held!", "lloro, W", &pieces, "Hello, World!");
     }
+
+    #[test]
+    #[should_panic]
+    fn out_of_bounds_pos() {
+        let mut table = PieceTable::from("");
+        table.insert(1, "Hello, World!");
+    }
+
+    #[test]
+    #[should_panic]
+    fn empty_string() {
+        let mut table = PieceTable::from("Hello, World!");
+        table.insert(0, "");
+    }
 }
 
 mod append {
@@ -169,6 +183,13 @@ mod append {
         table.append("World");
         table.append("!");
         validate_table(&table, "Hello", ", World!", &pieces, "Hello, World!");
+    }
+
+    #[test]
+    #[should_panic]
+    fn empty_string() {
+        let mut table = PieceTable::from("");
+        table.append("");
     }
 }
 
@@ -334,6 +355,27 @@ mod remove {
         table.remove("Hel".len(), "lo, Wo".len());
         validate_table(&table, "Held!", "lloro, W", &pieces, "Helrld!");
     }
+
+    #[test]
+    #[should_panic]
+    fn empty() {
+        let mut table = PieceTable::from("");
+        table.remove(0, 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn out_of_bounds() {
+        let mut table = PieceTable::from("Hello, World!");
+        table.remove(15, 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn zero_characters() {
+        let mut table = PieceTable::from("Hello, World!");
+        table.remove(5, 0);
+    }
 }
 
 mod slice {
@@ -392,5 +434,33 @@ mod slice {
         for i in 1.."Hello, World!".len() - 1 {
             assert_eq!(table.slice(..=i), "Hello, World!"[..=i]);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn upper_smaller_lower() {
+        let table = PieceTable::from("Hello, World!");
+        table.slice(3..1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn upper_equal_lower() {
+        let table = PieceTable::from("Hello, World!");
+        table.slice(3..3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn out_of_lower_bounds() {
+        let table = PieceTable::from("Hello, World!");
+        table.slice(20..22);
+    }
+
+    #[test]
+    #[should_panic]
+    fn out_of_upper_bounds() {
+        let table = PieceTable::from("Hello, World!");
+        table.slice(0..22);
     }
 }

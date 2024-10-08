@@ -27,6 +27,7 @@ impl Piece {
     }
 }
 
+/// Simple Piece Table
 pub struct PieceTable {
     pub(crate) original: String,
     pub(crate) addition: String,
@@ -36,6 +37,15 @@ pub struct PieceTable {
 }
 
 impl PieceTable {
+    /// Creates a Piece Table from a string
+    ///
+    /// ### Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let table = PieceTable::from("Hello, World!");
+    /// assert_eq!(table.to_string(), "Hello, World!");
+    /// ```
     pub fn from<S: AsRef<str>>(string: S) -> Self {
         let string = String::from(string.as_ref());
         let string_len = string.len();
@@ -53,6 +63,23 @@ impl PieceTable {
         }
     }
 
+    /// Inserts `string` at `pos`.
+    ///
+    /// If `pos == PieceTable::len`, it appends the str (see `PieceTable::append`),
+    ///
+    /// ### Panic
+    /// Panics when either:
+    /// - `pos > PieceTable::len`
+    /// - `string` is empty
+    ///
+    /// ### Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let mut table = PieceTable::from("HelloWorld!");
+    /// table.insert(5, ", ");
+    /// assert_eq!(table.to_string(), "Hello, World!");
+    /// ```
     pub fn insert<S: AsRef<str>>(&mut self, mut pos: usize, string: S) {
         assert!(
             pos <= self.total_length,
@@ -105,10 +132,38 @@ impl PieceTable {
         }
     }
 
+    /// Appends a string at the end.
+    ///
+    /// ### Panic
+    /// Panics if the string is empty
+    ///
+    /// ### Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let mut table = PieceTable::from("Hello, ");
+    /// table.append("World!");
+    /// assert_eq!(table.to_string(), "Hello, World!");
+    /// ```
     pub fn append<S: AsRef<str>>(&mut self, string: S) {
         self.insert(self.total_length, string);
     }
 
+    /// Removes a string from `pos` of length `n`
+    ///
+    /// ### Panic
+    /// Panics if:
+    /// - `pos + n > PieceTable::len`
+    /// - `n == 0`
+    ///
+    /// ### Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let mut table = PieceTable::from("Hello, World!");
+    /// table.remove(5, 8);
+    /// assert_eq!(table.to_string(), "Hello");
+    /// ```
     pub fn remove(&mut self, pos: usize, n: usize) {
         let end = pos + n;
         assert!(
@@ -171,6 +226,7 @@ impl PieceTable {
         }
     }
 
+    /// Returns the length of the text stored in the Piece Table
     pub fn len(&self) -> usize {
         self.total_length
     }
@@ -182,7 +238,7 @@ impl PieceTable {
         );
         assert!(
             upper <= self.total_length,
-            "Upper slice bound must be within the bounds of the text"
+            "Slice bounds must be within the bounds of the text"
         );
 
         let mut out = String::new();
@@ -205,10 +261,6 @@ impl PieceTable {
             let capture_end = upper >= len && len > lower;
             let caputre_slice = prev_len < lower && upper < len;
 
-            eprintln!("{}, {}", piece.offset, piece.length);
-            eprintln!("{lower}, {upper}, {prev_len}, {len}");
-            eprintln!("{capture_start}, {capture_end}, {caputre_slice}\n---");
-
             match (capture_start, capture_end) {
                 (false, true) => {
                     let start = piece.offset + (lower - prev_len);
@@ -228,7 +280,6 @@ impl PieceTable {
                 }
                 _ => continue,
             }
-            eprintln!("{out}\n---");
         }
 
         out
@@ -240,24 +291,42 @@ pub trait Slice<T> {
 }
 
 impl Slice<Range<usize>> for PieceTable {
+    /// Returns the text from pos `start..end`
+    ///
+    /// ### Panic
+    /// Panics if
+    /// - Range is out of bounds
+    /// - `end <= start`
     fn slice(&self, index: Range<usize>) -> String {
         self._slice(index.start, index.end)
     }
 }
 
 impl Slice<RangeFrom<usize>> for PieceTable {
+    /// Returns the text from pos `start..`
+    ///
+    /// ### Panic
+    /// Panics if range is out of bounds
     fn slice(&self, index: RangeFrom<usize>) -> String {
         self._slice(index.start, self.total_length)
     }
 }
 
 impl Slice<RangeFull> for PieceTable {
+    /// Returns the entire text (prefer `PieceTable::to_string`)
     fn slice(&self, _index: RangeFull) -> String {
         self._slice(0, self.total_length)
     }
 }
 
 impl Slice<RangeInclusive<usize>> for PieceTable {
+    /// Returns the text from pos `start..=end`
+    ///
+    /// ### Panic
+    /// Panics if
+    /// - Range is out of bounds
+    /// - `end + 1 <= start`
+    /// - `end == usize::MAX`
     fn slice(&self, index: RangeInclusive<usize>) -> String {
         assert!(
             *index.end() != usize::MAX,
@@ -269,12 +338,23 @@ impl Slice<RangeInclusive<usize>> for PieceTable {
 }
 
 impl Slice<RangeTo<usize>> for PieceTable {
+    /// Returns the text from pos `..end`
+    ///
+    ///
+    /// ### Panic
+    /// Panics if range is out of bounds
     fn slice(&self, index: RangeTo<usize>) -> String {
         self.slice(0..index.end)
     }
 }
 
 impl Slice<RangeToInclusive<usize>> for PieceTable {
+    /// Returns the text from pos `..=end`
+    ///
+    /// ### Panic
+    /// Panics if
+    /// - Range is out of bounds
+    /// - `end == usize::MAX`
     fn slice(&self, index: RangeToInclusive<usize>) -> String {
         assert!(
             index.end != usize::MAX,
