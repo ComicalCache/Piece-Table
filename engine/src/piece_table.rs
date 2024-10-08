@@ -231,6 +231,7 @@ impl PieceTable {
         self.total_length
     }
 
+    /// Returns text stored in the Piece Table (`upper` is exclusive)
     fn _slice(&self, lower: usize, upper: usize) -> String {
         assert!(
             lower < upper,
@@ -291,7 +292,7 @@ pub trait Slice<T> {
 }
 
 impl Slice<Range<usize>> for PieceTable {
-    /// Returns the text from pos `start..end`
+    /// Returns the text stored in the Piece Table from pos `start..end`
     ///
     /// ### Panic
     /// Panics if
@@ -303,7 +304,7 @@ impl Slice<Range<usize>> for PieceTable {
 }
 
 impl Slice<RangeFrom<usize>> for PieceTable {
-    /// Returns the text from pos `start..`
+    /// Returns the text stored in the Piece Table from pos `start..`
     ///
     /// ### Panic
     /// Panics if range is out of bounds
@@ -313,14 +314,14 @@ impl Slice<RangeFrom<usize>> for PieceTable {
 }
 
 impl Slice<RangeFull> for PieceTable {
-    /// Returns the entire text (prefer `PieceTable::to_string`)
+    /// Returns the entire text stored in the Piece Table (prefer `PieceTable::to_string`)
     fn slice(&self, _index: RangeFull) -> String {
         self._slice(0, self.total_length)
     }
 }
 
 impl Slice<RangeInclusive<usize>> for PieceTable {
-    /// Returns the text from pos `start..=end`
+    /// Returns the text stored in the Piece Table from pos `start..=end`
     ///
     /// ### Panic
     /// Panics if
@@ -338,7 +339,7 @@ impl Slice<RangeInclusive<usize>> for PieceTable {
 }
 
 impl Slice<RangeTo<usize>> for PieceTable {
-    /// Returns the text from pos `..end`
+    /// Returns the text stored in the Piece Table from pos `..end`
     ///
     ///
     /// ### Panic
@@ -349,7 +350,7 @@ impl Slice<RangeTo<usize>> for PieceTable {
 }
 
 impl Slice<RangeToInclusive<usize>> for PieceTable {
-    /// Returns the text from pos `..=end`
+    /// Returns the text stored in the Piece Table from pos `..=end`
     ///
     /// ### Panic
     /// Panics if
