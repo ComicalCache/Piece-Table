@@ -1,9 +1,12 @@
-use std::{
-    fmt::Display,
-    ops::{Not, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
+use std::ops::Not;
+
+use crate::{
+    history::{ChangeType, Commit},
+    History,
 };
 
-use crate::History;
+#[allow(unused_imports)]
+pub use crate::traits::piece_table::*;
 
 #[cfg_attr(test, derive(PartialEq, Debug))]
 #[derive(Clone, Copy)]
@@ -32,45 +35,6 @@ impl Piece {
     }
 }
 
-pub(crate) enum ChangeType {
-    Deletion,
-    Insertion,
-}
-
-pub(crate) struct Change {
-    /// Position of the Piece in the Piece Table (Vec)
-    pos: usize,
-    piece: Piece,
-    typ: ChangeType,
-}
-
-impl Change {
-    pub(crate) fn new(pos: usize, piece: Piece, typ: ChangeType) -> Self {
-        Change { pos, piece, typ }
-    }
-}
-
-/// Changes made by manipulating the Piece Table
-///
-/// ### Important
-/// The order of operations is important, to keep the indices consistent
-/// all deletions happen *before* any additions
-pub(crate) struct Commit {
-    changes: Vec<Change>,
-}
-
-impl Commit {
-    pub(crate) fn new() -> Commit {
-        Commit {
-            changes: Vec::new(),
-        }
-    }
-
-    pub(crate) fn add_change(&mut self, pos: usize, piece: Piece, typ: ChangeType) {
-        self.changes.push(Change::new(pos, piece, typ));
-    }
-}
-
 /// Simple Piece Table
 pub struct PieceTable {
     /// Read only input data
@@ -90,7 +54,7 @@ pub struct PieceTable {
 impl PieceTable {
     /// Creates a Piece Table from a string
     ///
-    /// ### Example
+    /// # Example
     /// ```
     /// pub use piece_table::PieceTable;
     ///
@@ -119,12 +83,12 @@ impl PieceTable {
     ///
     /// If `pos == PieceTable::len`, it appends the str (see `PieceTable::append`),
     ///
-    /// ### Panic
+    /// # Panic
     /// Panics when either:
     /// - `pos > PieceTable::len`
     /// - `string` is empty
     ///
-    /// ### Example
+    /// # Example
     /// ```
     /// use piece_table::PieceTable;
     ///
@@ -186,7 +150,7 @@ impl PieceTable {
 
             let old_piece = self.pieces[idx];
             self.pieces[idx].length = pos;
-            commit.add_change(pos, old_piece, ChangeType::Deletion);
+            commit.add_change(idx, old_piece, ChangeType::Deletion);
             commit.add_change(idx, self.pieces[idx], ChangeType::Insertion);
 
             self.pieces.insert(idx + 1, piece);
@@ -201,10 +165,10 @@ impl PieceTable {
 
     /// Appends a string at the end.
     ///
-    /// ### Panic
+    /// # Panic
     /// Panics if the string is empty
     ///
-    /// ### Example
+    /// # Example
     /// ```
     /// use piece_table::PieceTable;
     ///
@@ -218,12 +182,12 @@ impl PieceTable {
 
     /// Removes a string from `pos` of length `n`
     ///
-    /// ### Panic
+    /// # Panic
     /// Panics if:
     /// - `pos + n > PieceTable::len`
     /// - `n == 0`
     ///
-    /// ### Example
+    /// # Example
     /// ```
     /// use piece_table::PieceTable;
     ///
@@ -316,7 +280,7 @@ impl PieceTable {
     }
 
     /// Returns text stored in the Piece Table (`upper` is exclusive)
-    fn _slice(&self, lower: usize, upper: usize) -> String {
+    pub(crate) fn _slice(&self, lower: usize, upper: usize) -> String {
         assert!(
             lower < upper,
             "Lower slice bound must be smaller than upper"
@@ -368,94 +332,5 @@ impl PieceTable {
         }
 
         out
-    }
-}
-
-pub trait Slice<T> {
-    fn slice(&self, index: T) -> String;
-}
-
-impl Slice<Range<usize>> for PieceTable {
-    /// Returns the text stored in the Piece Table from pos `start..end`
-    ///
-    /// ### Panic
-    /// Panics if
-    /// - Range is out of bounds
-    /// - `end <= start`
-    fn slice(&self, index: Range<usize>) -> String {
-        self._slice(index.start, index.end)
-    }
-}
-
-impl Slice<RangeFrom<usize>> for PieceTable {
-    /// Returns the text stored in the Piece Table from pos `start..`
-    ///
-    /// ### Panic
-    /// Panics if range is out of bounds
-    fn slice(&self, index: RangeFrom<usize>) -> String {
-        self._slice(index.start, self.total_length)
-    }
-}
-
-impl Slice<RangeFull> for PieceTable {
-    /// Returns the entire text stored in the Piece Table (prefer `PieceTable::to_string`)
-    fn slice(&self, _index: RangeFull) -> String {
-        self._slice(0, self.total_length)
-    }
-}
-
-impl Slice<RangeInclusive<usize>> for PieceTable {
-    /// Returns the text stored in the Piece Table from pos `start..=end`
-    ///
-    /// ### Panic
-    /// Panics if
-    /// - Range is out of bounds
-    /// - `end + 1 <= start`
-    /// - `end == usize::MAX`
-    fn slice(&self, index: RangeInclusive<usize>) -> String {
-        assert!(
-            *index.end() != usize::MAX,
-            "Upper incluse index must not be usize::MAX"
-        );
-
-        self.slice(*index.start()..*index.end() + 1)
-    }
-}
-
-impl Slice<RangeTo<usize>> for PieceTable {
-    /// Returns the text stored in the Piece Table from pos `..end`
-    ///
-    ///
-    /// ### Panic
-    /// Panics if range is out of bounds
-    fn slice(&self, index: RangeTo<usize>) -> String {
-        self.slice(0..index.end)
-    }
-}
-
-impl Slice<RangeToInclusive<usize>> for PieceTable {
-    /// Returns the text stored in the Piece Table from pos `..=end`
-    ///
-    /// ### Panic
-    /// Panics if
-    /// - Range is out of bounds
-    /// - `end == usize::MAX`
-    fn slice(&self, index: RangeToInclusive<usize>) -> String {
-        assert!(
-            index.end != usize::MAX,
-            "Upper incluse index must not be usize::MAX"
-        );
-
-        self.slice(0..index.end + 1)
-    }
-}
-
-impl Display for PieceTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.total_length == 0 {
-            write!(f, "")
-        } else {
-            write!(f, "{}", self._slice(0, self.total_length))
-        }
     }
 }
