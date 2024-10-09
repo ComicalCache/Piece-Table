@@ -259,7 +259,7 @@ impl PieceTable {
         self.total_length
     }
 
-    /// Reverts the Piece Table to the state *before* the last insertion
+    /// Reverts the Piece Table to the state *before* the last changes
     ///
     /// # Example
     /// ```
@@ -280,6 +280,7 @@ impl PieceTable {
             None => return,
         };
 
+        // FIXME: lots of duplication with hot_redo
         for change in commit.changes.iter().rev() {
             match change.piece.source {
                 PieceSource::Original => assert!(
@@ -305,11 +306,73 @@ impl PieceTable {
                 ChangeType::Insertion => {
                     assert!(
                         change.pos < self.pieces.len(),
-                        "Undo delete position is out of bounds"
+                        "Undo insert position is out of bounds"
                     );
 
                     let removed_piece = self.pieces.remove(change.pos);
                     self.total_length -= removed_piece.length;
+                }
+            }
+        }
+    }
+
+    /// Restores the Piece Table to the "hot" state *after* the last undo.
+    ///
+    /// Hot state means the state the head was last at (e.g. at a fork in the history
+    ///     it can quickly be redone to the last head position without having to select it)
+    ///
+    /// # Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let mut table = PieceTable::from("Hello, World!");
+    /// table.append("World!");
+    /// table.append("World!");
+    /// table.undo();
+    /// table.undo();
+    /// assert_eq!(table.to_string(), "Hello, World!");
+    /// table.hot_redo();
+    /// assert_eq!(table.to_string(), "Hello, World!World!");
+    /// table.hot_redo();
+    /// assert_eq!(table.to_string(), "Hello, World!World!World!");
+    /// ```
+    pub fn hot_redo(&mut self) {
+        let commit = match self.history.hot_redo() {
+            Some(commit) => commit,
+            None => return,
+        };
+
+        // FIXME: lots of duplication with undo
+        for change in commit.changes.iter() {
+            match change.piece.source {
+                PieceSource::Original => assert!(
+                    change.piece.offset + change.piece.length <= self.original.len(),
+                    "Piece change is out of original text bounds"
+                ),
+                PieceSource::Addition => assert!(
+                    change.piece.offset + change.piece.length <= self.addition.len(),
+                    "Piece change is out of addition text bounds"
+                ),
+            }
+
+            match change.typ {
+                ChangeType::Deletion => {
+                    assert!(
+                        change.pos < self.pieces.len(),
+                        "Redo delete position is out of bounds"
+                    );
+
+                    let removed_piece = self.pieces.remove(change.pos);
+                    self.total_length -= removed_piece.length;
+                }
+                ChangeType::Insertion => {
+                    assert!(
+                        change.pos <= self.pieces.len(),
+                        "Redo insert position is out of bounds"
+                    );
+
+                    self.pieces.insert(change.pos, change.piece);
+                    self.total_length += change.piece.length;
                 }
             }
         }

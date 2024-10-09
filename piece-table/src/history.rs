@@ -57,4 +57,25 @@ impl History {
         self.changes[self.head].hot_path = Some(prev_head);
         Some(&self.changes[prev_head].commit)
     }
+
+    /// Greedily redos on the "hot path", the path of the last head locations
+    pub(crate) fn hot_redo(&mut self) -> Option<&Commit> {
+        assert!(
+            self.changes.is_empty().not(),
+            "History is empty when undoing"
+        );
+        assert!(self.head < self.changes.len(), "Head is out of bounds");
+
+        let hot_head = self.changes[self.head].hot_path?;
+
+        assert!(hot_head < self.changes.len(), "Hot head is out of bounds");
+        assert!(
+            self.changes[self.head].next.contains(&hot_head),
+            "Hot path is not in path of change"
+        );
+
+        self.head = hot_head;
+
+        Some(&self.changes[self.head].commit)
+    }
 }

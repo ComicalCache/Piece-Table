@@ -8,7 +8,7 @@ pub(crate) struct Entry {
     pub(crate) next: Vec<usize>,
 
     /// Path of last head location
-    /// Enables hot redo that always redos to the last head location, even at a fork
+    /// Enables hot redo that greedily redos to the last head position
     pub(crate) hot_path: Option<usize>,
 
     pub(crate) commit: Commit,
