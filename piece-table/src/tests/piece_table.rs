@@ -1,6 +1,12 @@
-use crate::piece_table::*;
+use crate::{
+    piece_table::{
+        piece::{Piece, PieceSource},
+        PieceTable,
+    },
+    PieceTableSlice,
+};
 
-fn validate_table<S1: AsRef<str>, S2: AsRef<str>, S3: AsRef<str>>(
+pub(crate) fn validate_table<S1: AsRef<str>, S2: AsRef<str>, S3: AsRef<str>>(
     table: &PieceTable,
     original: S1,
     addition: S2,
@@ -36,7 +42,7 @@ mod from {
 
     #[test]
     fn str() {
-        let pieces = vec![Piece::new(Source::Original, 0, "Hello, World!".len())];
+        let pieces = vec![Piece::new(PieceSource::Original, 0, "Hello, World!".len())];
 
         let table = PieceTable::from("Hello, World!");
         validate_table(
@@ -50,7 +56,7 @@ mod from {
 
     #[test]
     fn string() {
-        let pieces = vec![Piece::new(Source::Original, 0, "Hello, World!".len())];
+        let pieces = vec![Piece::new(PieceSource::Original, 0, "Hello, World!".len())];
 
         let test_string: String = String::from("Hello, World!");
         let table = PieceTable::from(test_string.clone());
@@ -72,8 +78,8 @@ mod insert {
     #[test]
     fn front() {
         let pieces = vec![
-            Piece::new(Source::Addition, 0, "Hello, ".len()),
-            Piece::new(Source::Original, 0, "World!".len()),
+            Piece::new(PieceSource::Addition, 0, "Hello, ".len()),
+            Piece::new(PieceSource::Original, 0, "World!".len()),
         ];
 
         let mut table = PieceTable::from("World!");
@@ -84,8 +90,8 @@ mod insert {
     #[test]
     fn back() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, "Hello, ".len()),
-            Piece::new(Source::Addition, 0, "World!".len()),
+            Piece::new(PieceSource::Original, 0, "Hello, ".len()),
+            Piece::new(PieceSource::Addition, 0, "World!".len()),
         ];
 
         let mut table = PieceTable::from("Hello, ");
@@ -96,9 +102,9 @@ mod insert {
     #[test]
     fn between_pieces() {
         let pieces = vec![
-            Piece::new(Source::Addition, 0, "Hello".len()),
-            Piece::new(Source::Addition, "Hello".len(), ", ".len()),
-            Piece::new(Source::Original, 0, "World!".len()),
+            Piece::new(PieceSource::Addition, 0, "Hello".len()),
+            Piece::new(PieceSource::Addition, "Hello".len(), ", ".len()),
+            Piece::new(PieceSource::Original, 0, "World!".len()),
         ];
 
         let mut table = PieceTable::from("World!");
@@ -110,9 +116,9 @@ mod insert {
     #[test]
     fn middle() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, "Hello".len()),
-            Piece::new(Source::Addition, 0, ", ".len()),
-            Piece::new(Source::Original, 5, "World!".len()),
+            Piece::new(PieceSource::Original, 0, "Hello".len()),
+            Piece::new(PieceSource::Addition, 0, ", ".len()),
+            Piece::new(PieceSource::Original, 5, "World!".len()),
         ];
 
         let mut table = PieceTable::from("HelloWorld!");
@@ -123,11 +129,11 @@ mod insert {
     #[test]
     fn middle_twice() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, 2),
-            Piece::new(Source::Addition, 0, 2),
-            Piece::new(Source::Addition, 4, 4),
-            Piece::new(Source::Addition, 2, 2),
-            Piece::new(Source::Original, 2, 3),
+            Piece::new(PieceSource::Original, 0, 2),
+            Piece::new(PieceSource::Addition, 0, 2),
+            Piece::new(PieceSource::Addition, 4, 4),
+            Piece::new(PieceSource::Addition, 2, 2),
+            Piece::new(PieceSource::Original, 2, 3),
         ];
 
         let mut table = PieceTable::from("Held!");
@@ -156,7 +162,7 @@ mod append {
 
     #[test]
     fn empty() {
-        let pieces = vec![Piece::new(Source::Addition, 0, "Hello, World!".len())];
+        let pieces = vec![Piece::new(PieceSource::Addition, 0, "Hello, World!".len())];
 
         let mut table = PieceTable::from("");
         table.append("Hello, World!");
@@ -172,10 +178,10 @@ mod append {
     #[test]
     fn multiple() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, "Hello".len()),
-            Piece::new(Source::Addition, 0, ", ".len()),
-            Piece::new(Source::Addition, ", ".len(), "World".len()),
-            Piece::new(Source::Addition, ", World".len(), "!".len()),
+            Piece::new(PieceSource::Original, 0, "Hello".len()),
+            Piece::new(PieceSource::Addition, 0, ", ".len()),
+            Piece::new(PieceSource::Addition, ", ".len(), "World".len()),
+            Piece::new(PieceSource::Addition, ", World".len(), "!".len()),
         ];
 
         let mut table = PieceTable::from("Hello");
@@ -199,7 +205,7 @@ mod remove {
     #[test]
     fn front() {
         let pieces = vec![Piece::new(
-            Source::Original,
+            PieceSource::Original,
             "Hello, ".len(),
             "World!".len(),
         )];
@@ -212,7 +218,7 @@ mod remove {
     #[test]
     fn front_single() {
         let pieces = vec![Piece::new(
-            Source::Original,
+            PieceSource::Original,
             "H".len(),
             "ello, World!".len(),
         )];
@@ -230,7 +236,7 @@ mod remove {
 
     #[test]
     fn back() {
-        let pieces = vec![Piece::new(Source::Original, 0, "Hello, ".len())];
+        let pieces = vec![Piece::new(PieceSource::Original, 0, "Hello, ".len())];
 
         let mut table = PieceTable::from("Hello, World!");
         table.remove("Hello, ".len(), "World!".len());
@@ -239,7 +245,7 @@ mod remove {
 
     #[test]
     fn back_single() {
-        let pieces = vec![Piece::new(Source::Original, 0, "Hello, World".len())];
+        let pieces = vec![Piece::new(PieceSource::Original, 0, "Hello, World".len())];
 
         let mut table = PieceTable::from("Hello, World!");
         table.remove("Hello, World".len(), "!".len());
@@ -255,8 +261,8 @@ mod remove {
     #[test]
     fn slice() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, "Hello".len()),
-            Piece::new(Source::Original, "Hello, ".len(), "World!".len()),
+            Piece::new(PieceSource::Original, 0, "Hello".len()),
+            Piece::new(PieceSource::Original, "Hello, ".len(), "World!".len()),
         ];
 
         let mut table = PieceTable::from("Hello, World!");
@@ -273,8 +279,8 @@ mod remove {
     #[test]
     fn cross_piece() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, "Hello".len()),
-            Piece::new(Source::Addition, 1, "World!".len()),
+            Piece::new(PieceSource::Original, 0, "Hello".len()),
+            Piece::new(PieceSource::Addition, 1, "World!".len()),
         ];
 
         let mut table = get_simple_table();
@@ -284,7 +290,7 @@ mod remove {
 
     #[test]
     fn cross_back() {
-        let pieces = vec![Piece::new(Source::Original, 0, "Hello".len())];
+        let pieces = vec![Piece::new(PieceSource::Original, 0, "Hello".len())];
 
         let mut table = get_simple_table();
         table.remove("Hello".len(), ", World!".len());
@@ -293,7 +299,7 @@ mod remove {
 
     #[test]
     fn front_cross() {
-        let pieces = vec![Piece::new(Source::Addition, 1, "World!".len())];
+        let pieces = vec![Piece::new(PieceSource::Addition, 1, "World!".len())];
 
         let mut table = get_simple_table();
         table.remove(0, "Hello, ".len());
@@ -303,10 +309,10 @@ mod remove {
     #[test]
     fn full() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, 2),
-            Piece::new(Source::Addition, 0, 2),
-            Piece::new(Source::Addition, 2, 2),
-            Piece::new(Source::Original, 2, 3),
+            Piece::new(PieceSource::Original, 0, 2),
+            Piece::new(PieceSource::Addition, 0, 2),
+            Piece::new(PieceSource::Addition, 2, 2),
+            Piece::new(PieceSource::Original, 2, 3),
         ];
 
         let mut table = get_complex_table();
@@ -317,10 +323,10 @@ mod remove {
     #[test]
     fn full_cross() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, 2),
-            Piece::new(Source::Addition, 0, 2),
-            Piece::new(Source::Addition, 3, 1),
-            Piece::new(Source::Original, 2, 3),
+            Piece::new(PieceSource::Original, 0, 2),
+            Piece::new(PieceSource::Addition, 0, 2),
+            Piece::new(PieceSource::Addition, 3, 1),
+            Piece::new(PieceSource::Original, 2, 3),
         ];
 
         let mut table = get_complex_table();
@@ -331,10 +337,10 @@ mod remove {
     #[test]
     fn cross_full() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, 2),
-            Piece::new(Source::Addition, 0, 1),
-            Piece::new(Source::Addition, 2, 2),
-            Piece::new(Source::Original, 2, 3),
+            Piece::new(PieceSource::Original, 0, 2),
+            Piece::new(PieceSource::Addition, 0, 1),
+            Piece::new(PieceSource::Addition, 2, 2),
+            Piece::new(PieceSource::Original, 2, 3),
         ];
 
         let mut table = get_complex_table();
@@ -345,10 +351,10 @@ mod remove {
     #[test]
     fn cross_full_cross() {
         let pieces = vec![
-            Piece::new(Source::Original, 0, 2),
-            Piece::new(Source::Addition, 0, 1),
-            Piece::new(Source::Addition, 3, 1),
-            Piece::new(Source::Original, 2, 3),
+            Piece::new(PieceSource::Original, 0, 2),
+            Piece::new(PieceSource::Addition, 0, 1),
+            Piece::new(PieceSource::Addition, 3, 1),
+            Piece::new(PieceSource::Original, 2, 3),
         ];
 
         let mut table = get_complex_table();

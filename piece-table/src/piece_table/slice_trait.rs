@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive},
-};
+use std::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 use crate::piece_table::PieceTable;
 
@@ -82,15 +79,5 @@ impl PieceTableSlice<RangeToInclusive<usize>> for PieceTable {
         );
 
         self.slice(0..index.end + 1)
-    }
-}
-
-impl Display for PieceTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.total_length == 0 {
-            write!(f, "")
-        } else {
-            write!(f, "{}", self._slice(0, self.total_length))
-        }
     }
 }

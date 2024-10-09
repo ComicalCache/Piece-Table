@@ -1,6 +1,5 @@
-pub mod traits;
-
 mod piece_table;
+pub use crate::piece_table::slice_trait::PieceTableSlice;
 pub use piece_table::PieceTable;
 
 mod history;

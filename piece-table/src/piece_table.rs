@@ -1,41 +1,18 @@
+pub mod display_trait;
+pub mod slice_trait;
+
+pub(crate) mod piece;
+
 use std::ops::Not;
 
+use piece::{Piece, PieceSource};
+
 use crate::{
-    history::{ChangeType, Commit},
+    history::{change::ChangeType, commit::Commit},
     History,
 };
 
-#[allow(unused_imports)]
-pub use crate::traits::piece_table::*;
-
-#[cfg_attr(test, derive(PartialEq, Debug))]
-#[derive(Clone, Copy)]
-pub(crate) enum Source {
-    Original,
-    Addition,
-}
-
-#[cfg_attr(test, derive(PartialEq, Debug))]
-#[derive(Clone, Copy)]
-pub(crate) struct Piece {
-    source: Source,
-    /// Offset in the data source
-    offset: usize,
-    /// Length of pointed at content
-    length: usize,
-}
-
-impl Piece {
-    pub(crate) fn new(source: Source, offset: usize, length: usize) -> Self {
-        Piece {
-            source,
-            offset,
-            length,
-        }
-    }
-}
-
-/// Simple Piece Table
+/// Simple Piece Table with a history to enable undo/redo operations
 pub struct PieceTable {
     /// Read only input data
     pub(crate) original: String,
@@ -65,7 +42,7 @@ impl PieceTable {
         let string = String::from(string.as_ref());
         let string_len = string.len();
         let pieces = if string.is_empty().not() {
-            vec![Piece::new(Source::Original, 0, string_len)]
+            vec![Piece::new(PieceSource::Original, 0, string_len)]
         } else {
             vec![]
         };
@@ -107,7 +84,7 @@ impl PieceTable {
 
         let special_case = pos == 0 || pos == self.total_length;
 
-        let piece = Piece::new(Source::Addition, self.addition.len(), string.len());
+        let piece = Piece::new(PieceSource::Addition, self.addition.len(), string.len());
         let mut commit = Commit::new();
 
         self.total_length += string.len();
@@ -137,9 +114,10 @@ impl PieceTable {
             break;
         }
 
+        use ChangeType::*;
         if pos == 0 {
             self.pieces.insert(idx, piece);
-            commit.add_change(idx, piece, ChangeType::Insertion);
+            commit.add_change(idx, piece, Insertion);
         } else {
             // Split existing piece into two and insert new piece between
             let trailing = Piece::new(
@@ -150,20 +128,20 @@ impl PieceTable {
 
             let old_piece = self.pieces[idx];
             self.pieces[idx].length = pos;
-            commit.add_change(idx, old_piece, ChangeType::Deletion);
-            commit.add_change(idx, self.pieces[idx], ChangeType::Insertion);
+            commit.add_change(idx, old_piece, Deletion);
+            commit.add_change(idx, self.pieces[idx], Insertion);
 
             self.pieces.insert(idx + 1, piece);
-            commit.add_change(idx + 1, piece, ChangeType::Insertion);
+            commit.add_change(idx + 1, piece, Insertion);
 
             self.pieces.insert(idx + 2, trailing);
-            commit.add_change(idx + 2, trailing, ChangeType::Insertion);
+            commit.add_change(idx + 2, trailing, Insertion);
         }
 
         self.history.save(commit);
     }
 
-    /// Appends a string at the end.
+    /// Appends a string at the end
     ///
     /// # Panic
     /// Panics if the string is empty
@@ -199,7 +177,7 @@ impl PieceTable {
         let end = pos + n;
         assert!(
             end <= self.total_length,
-            "Deleted string must be within the text"
+            "Removed string must be within the text"
         );
         assert!(n != 0, "Must remove at least 1 character");
 
@@ -212,6 +190,7 @@ impl PieceTable {
             Start(Index, Length),
             Slice(Index, Offset),
         }
+        use Remove::*;
 
         let mut remove = Vec::new();
         let mut len = 0;
@@ -227,46 +206,47 @@ impl PieceTable {
             let remove_slice = prev_len < pos && end < len;
 
             match (remove_start, remove_end) {
-                (false, true) => remove.push(Remove::End(idx, len - pos)),
-                (true, true) => remove.push(Remove::Full(idx)),
-                (true, false) => remove.push(Remove::Start(idx, end - prev_len)),
-                _ if remove_slice => remove.push(Remove::Slice(idx, pos - prev_len)),
+                (false, true) => remove.push(End(idx, len - pos)),
+                (true, true) => remove.push(Full(idx)),
+                (true, false) => remove.push(Start(idx, end - prev_len)),
+                _ if remove_slice => remove.push(Slice(idx, pos - prev_len)),
                 _ => continue,
             }
         }
 
+        use ChangeType::*;
         let mut commit = Commit::new();
         self.total_length -= n;
         for remove_piece in remove.iter().rev() {
             match remove_piece {
-                Remove::End(idx, len) => {
+                End(idx, len) => {
                     let old_piece = self.pieces[*idx];
                     self.pieces[*idx].length -= *len;
-                    commit.add_change(*idx, old_piece, ChangeType::Deletion);
-                    commit.add_change(*idx, self.pieces[*idx], ChangeType::Insertion);
+                    commit.add_change(*idx, old_piece, Deletion);
+                    commit.add_change(*idx, self.pieces[*idx], Insertion);
                 }
-                Remove::Full(idx) => {
-                    commit.add_change(*idx, self.pieces.remove(*idx), ChangeType::Deletion);
+                Full(idx) => {
+                    commit.add_change(*idx, self.pieces.remove(*idx), Deletion);
                 }
-                Remove::Start(idx, len) => {
+                Start(idx, len) => {
                     let old_piece = self.pieces[*idx];
                     self.pieces[*idx].length -= *len;
                     self.pieces[*idx].offset += *len;
-                    commit.add_change(*idx, old_piece, ChangeType::Deletion);
-                    commit.add_change(*idx, self.pieces[*idx], ChangeType::Insertion);
+                    commit.add_change(*idx, old_piece, Deletion);
+                    commit.add_change(*idx, self.pieces[*idx], Insertion);
                 }
-                Remove::Slice(idx, offset) => {
+                Slice(idx, offset) => {
                     let old_piece = self.pieces[*idx];
                     let leading = Piece::new(old_piece.source, old_piece.offset, *offset);
                     let trailing_len = old_piece.length - *offset - n;
                     let trailing = Piece::new(old_piece.source, *offset + n, trailing_len);
 
                     self.pieces[*idx] = leading;
-                    commit.add_change(*idx, old_piece, ChangeType::Deletion);
-                    commit.add_change(*idx, leading, ChangeType::Insertion);
+                    commit.add_change(*idx, old_piece, Deletion);
+                    commit.add_change(*idx, leading, Insertion);
 
                     self.pieces.insert(*idx + 1, trailing);
-                    commit.add_change(*idx + 1, trailing, ChangeType::Insertion);
+                    commit.add_change(*idx + 1, trailing, Insertion);
                 }
             }
         }
@@ -277,6 +257,62 @@ impl PieceTable {
     /// Returns the length of the text stored in the Piece Table
     pub fn len(&self) -> usize {
         self.total_length
+    }
+
+    /// Reverts the Piece Table to the state *before* the last insertion
+    ///
+    /// # Example
+    /// ```
+    /// use piece_table::PieceTable;
+    ///
+    /// let mut table = PieceTable::from("Hello, World!");
+    /// table.append("World!");
+    /// table.append("World!");
+    /// assert_eq!(table.to_string(), "Hello, World!World!World!");
+    /// table.undo();
+    /// assert_eq!(table.to_string(), "Hello, World!World!");
+    /// table.undo();
+    /// assert_eq!(table.to_string(), "Hello, World!");
+    /// ```
+    pub fn undo(&mut self) {
+        let commit = match self.history.undo() {
+            Some(commit) => commit,
+            None => return,
+        };
+
+        for change in commit.changes.iter().rev() {
+            match change.piece.source {
+                PieceSource::Original => assert!(
+                    change.piece.offset + change.piece.length <= self.original.len(),
+                    "Piece change is out of original text bounds"
+                ),
+                PieceSource::Addition => assert!(
+                    change.piece.offset + change.piece.length <= self.addition.len(),
+                    "Piece change is out of addition text bounds"
+                ),
+            }
+
+            match change.typ {
+                ChangeType::Deletion => {
+                    assert!(
+                        change.pos <= self.pieces.len(),
+                        "Undo delete position is out of bounds"
+                    );
+
+                    self.pieces.insert(change.pos, change.piece);
+                    self.total_length += change.piece.length;
+                }
+                ChangeType::Insertion => {
+                    assert!(
+                        change.pos < self.pieces.len(),
+                        "Undo delete position is out of bounds"
+                    );
+
+                    let removed_piece = self.pieces.remove(change.pos);
+                    self.total_length -= removed_piece.length;
+                }
+            }
+        }
     }
 
     /// Returns text stored in the Piece Table (`upper` is exclusive)
@@ -302,8 +338,8 @@ impl PieceTable {
             len += piece.length;
 
             let source = match piece.source {
-                Source::Original => &self.original,
-                Source::Addition => &self.addition,
+                PieceSource::Original => &self.original,
+                PieceSource::Addition => &self.addition,
             };
 
             let capture_start = lower <= prev_len;
