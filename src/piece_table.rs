@@ -319,7 +319,7 @@ impl PieceTable {
     /// Restores the Piece Table to the "hot" state *after* the last undo.
     ///
     /// Hot state means the state the head was last at (e.g. at a fork in the history
-    ///     it can quickly be redone to the last head position without having to select it)
+    ///     it can quickly be redone to the last head position without having to select it).
     ///
     /// # Example
     /// ```
@@ -343,7 +343,7 @@ impl PieceTable {
         };
 
         // FIXME: lots of duplication with undo
-        for change in commit.changes.iter() {
+        for change in &commit.changes {
             match change.piece.source {
                 PieceSource::Original => assert!(
                     change.piece.offset + change.piece.length <= self.original.len(),
@@ -392,7 +392,7 @@ impl PieceTable {
         let mut out = String::new();
 
         let mut len = 0;
-        for piece in self.pieces.iter() {
+        for piece in &self.pieces {
             if len >= upper {
                 break;
             }
