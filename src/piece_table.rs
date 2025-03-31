@@ -82,40 +82,29 @@ impl PieceTable {
         let string = string.as_ref();
         assert!(string.is_empty().not(), "Inserted string must not be empty");
 
-        let special_case = pos == 0 || pos == self.total_length;
+        let mut idx = 0;
+        if pos == 0 || pos == self.total_length {
+            // FIXME: insertion at the very front is slow, can this be done faster?
+            idx = if pos == 0 { 0 } else { self.pieces.len() };
+        } else {
+            let mut len = 0;
+            for (i, piece) in self.pieces.iter().enumerate() {
+                if len + piece.length <= pos {
+                    len += piece.length;
+                    continue;
+                }
+
+                idx = i;
+                pos = pos - len;
+                break;
+            }
+        }
 
         let piece = Piece::new(PieceSource::Addition, self.addition.len(), string.len());
         let mut commit = Commit::new();
 
-        self.total_length += string.len();
-        self.addition.push_str(string);
-
-        if special_case {
-            // FIXME: insertion at the very front is slow, can this be done faster?
-            let idx = if pos == 0 { 0 } else { self.pieces.len() };
-
-            self.pieces.insert(idx, piece);
-            commit.add_change(idx, piece, ChangeType::Insertion);
-
-            self.history.save(commit);
-            return;
-        }
-
-        let mut len = 0;
-        let mut idx = 0;
-        for (i, piece) in self.pieces.iter().enumerate() {
-            if len + piece.length <= pos {
-                len += piece.length;
-                continue;
-            }
-
-            idx = i;
-            pos = pos - len;
-            break;
-        }
-
         use ChangeType::*;
-        if pos == 0 {
+        if pos == 0 || pos == self.total_length {
             self.pieces.insert(idx, piece);
             commit.add_change(idx, piece, Insertion);
         } else {
@@ -139,6 +128,8 @@ impl PieceTable {
         }
 
         self.history.save(commit);
+        self.total_length += string.len();
+        self.addition.push_str(string);
     }
 
     /// Appends a string at the end
